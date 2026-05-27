@@ -20,3 +20,25 @@ export function matchesPathFilters(changedPaths: string[], pathFilters: string[]
         return !excludedByNegative;
     });
 }
+
+export function shouldSkipWorkflow(
+    changedPaths: string[],
+    paths?: string[],
+    pathsIgnore?: string[]
+): boolean {
+    if (paths && paths.length > 0) {
+        return !matchesPathFilters(changedPaths, paths);
+    }
+
+    if (pathsIgnore && pathsIgnore.length > 0) {
+        if (changedPaths.length === 0) {
+            return false;
+        }
+        const allIgnored = changedPaths.every((changedPath) =>
+            pathsIgnore.some((pattern) => minimatch(changedPath, pattern))
+        );
+        return allIgnored;
+    }
+
+    return false;
+}

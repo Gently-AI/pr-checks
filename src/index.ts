@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 
-import {matchesPathFilters} from './path-filter.js';
+import {shouldSkipWorkflow} from './path-filter.js';
 import {getWorkflowJobs} from './workflows.js';
 
 async function createCommitStatusWithRetry(
@@ -136,14 +136,16 @@ async function run(): Promise<void> {
 
             core.info(`Found workflow for check '${check}': ${workflowEntry.file}`);
 
-            const pathFilters = workflowEntry.config.on?.pull_request?.paths ?? [];
+            const prConfig = workflowEntry.config.on?.pull_request;
+            const paths = prConfig?.paths;
+            const pathsIgnore = prConfig?.['paths-ignore'];
 
-            if (pathFilters.length === 0) {
+            if (!paths?.length && !pathsIgnore?.length) {
                 core.info(`No path filters defined for workflow with job '${check}'`);
                 continue;
             }
 
-            if (!matchesPathFilters(changedPaths, pathFilters)) {
+            if (shouldSkipWorkflow(changedPaths, paths, pathsIgnore)) {
                 core.info(`No changed paths match filters for '${check}', marking as successful for commit ${commitSha}`);
 
                 await createCommitStatusWithRetry(octokit, {

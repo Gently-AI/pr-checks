@@ -8,6 +8,7 @@ export interface WorkflowConfig {
     on?: {
         pull_request?: {
             paths?: string[];
+            'paths-ignore'?: string[];
         };
     };
     jobs?: Record<string, { name?: string }>;

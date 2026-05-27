@@ -38747,6 +38747,19 @@ function matchesPathFilters(changedPaths, pathFilters) {
         return !excludedByNegative;
     });
 }
+function shouldSkipWorkflow(changedPaths, paths, pathsIgnore) {
+    if (paths && paths.length > 0) {
+        return !matchesPathFilters(changedPaths, paths);
+    }
+    if (pathsIgnore && pathsIgnore.length > 0) {
+        if (changedPaths.length === 0) {
+            return false;
+        }
+        const allIgnored = changedPaths.every((changedPath) => pathsIgnore.some((pattern) => minimatch(changedPath, pattern)));
+        return allIgnored;
+    }
+    return false;
+}
 //# sourceMappingURL=path-filter.js.map
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
@@ -42736,12 +42749,14 @@ async function run() {
                 continue;
             }
             info(`Found workflow for check '${check}': ${workflowEntry.file}`);
-            const pathFilters = workflowEntry.config.on?.pull_request?.paths ?? [];
-            if (pathFilters.length === 0) {
+            const prConfig = workflowEntry.config.on?.pull_request;
+            const paths = prConfig?.paths;
+            const pathsIgnore = prConfig?.['paths-ignore'];
+            if (!paths?.length && !pathsIgnore?.length) {
                 info(`No path filters defined for workflow with job '${check}'`);
                 continue;
             }
-            if (!matchesPathFilters(changedPaths, pathFilters)) {
+            if (shouldSkipWorkflow(changedPaths, paths, pathsIgnore)) {
                 info(`No changed paths match filters for '${check}', marking as successful for commit ${commitSha}`);
                 await createCommitStatusWithRetry(octokit, {
                     owner: context.repo.owner,
