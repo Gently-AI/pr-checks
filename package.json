@@ -27,6 +27,7 @@
   },
   "scripts": {
     "build": "tsc && ncc build lib/index.js -o dist --source-map --license licenses.txt",
+    "test": "vitest run",
     "lint": "eslint src/",
     "watch": "tsc && ncc build lib/index.js -o dist --source-map --license licenses.txt --watch",
     "package": "ncc build lib/index.js -o dist --source-map --license licenses.txt"
@@ -37,6 +38,7 @@
     "@vercel/ncc": "0.38.4",
     "eslint": "10.4.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.60.0"
+    "typescript-eslint": "8.60.0",
+    "vitest": "4.1.7"
   }
 }

@@ -1,10 +1,8 @@
-import path from 'node:path';
-import fs from 'node:fs';
-
-import * as yaml from 'js-yaml';
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import {minimatch} from 'minimatch';
+
+import {matchesPathFilters} from './path-filter.js';
+import {getWorkflowJobs} from './workflows.js';
 
 async function createCommitStatusWithRetry(
     octokit: ReturnType<typeof github.getOctokit>,
@@ -30,7 +28,6 @@ async function createCommitStatusWithRetry(
             core.warning(`Failed to create status for '${params.context}' on attempt ${attempt}/${maxRetries}: ${lastError.message}`);
 
             if (attempt < maxRetries) {
-                // Wait before retrying (exponential backoff: 1s, 2s, 4s)
                 const waitTime = Math.pow(2, attempt - 1) * 1000;
                 core.info(`Waiting ${waitTime}ms before retry...`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -58,7 +55,6 @@ async function run(): Promise<void> {
             return;
         }
 
-        // Parse ruleset names from input
         const requestedRulesetNames = rulesetsInput
             .split('\n')
             .map(line => line.trim())
@@ -73,7 +69,6 @@ async function run(): Promise<void> {
             includes_parents: true
         });
 
-        // Filter rulesets by requested names
         const rulesets = allRulesets.filter(ruleset =>
             requestedRulesetNames.includes(ruleset.name)
         );
@@ -91,7 +86,6 @@ async function run(): Promise<void> {
                 ruleset_id: ruleset.id
             });
 
-            // Extract required status checks from rules
             if (rulesetDetails.rules) {
                 for (const rule of rulesetDetails.rules) {
                     if (rule.type === 'required_status_checks' && rule.parameters?.required_status_checks) {
@@ -142,44 +136,16 @@ async function run(): Promise<void> {
 
             core.info(`Found workflow for check '${check}': ${workflowEntry.file}`);
 
-            // Check if any changed paths match the workflow's path filters
-            const pathFilters = workflowEntry.config.on?.pull_request?.paths || [];
+            const pathFilters = workflowEntry.config.on?.pull_request?.paths ?? [];
 
             if (pathFilters.length === 0) {
                 core.info(`No path filters defined for workflow with job '${check}'`);
                 continue;
             }
 
-            const matchesFilter = changedPaths.some((changedPath: string) => {
-                // Separate positive and negative patterns
-                const positiveFilters = pathFilters.filter((f: string) => !f.startsWith('!'));
-                const negativeFilters = pathFilters.filter((f: string) => f.startsWith('!')).map((f: string) => f.slice(1));
-
-                // If there are no positive filters, nothing can match
-                if (positiveFilters.length === 0) {
-                    return false;
-                }
-
-                // Check if path matches any positive pattern
-                const matchesPositive = positiveFilters.some((filter: string) => minimatch(changedPath, filter));
-
-                // If it doesn't match any positive pattern, it doesn't match
-                if (!matchesPositive) {
-                    return false;
-                }
-
-                // Check if path is excluded by any negative pattern
-                const excludedByNegative = negativeFilters.some((filter: string) =>
-                    minimatch(changedPath, filter));
-
-                // Path matches if it matches positive patterns and is not excluded
-                return !excludedByNegative;
-            });
-
-            if (!matchesFilter) {
+            if (!matchesPathFilters(changedPaths, pathFilters)) {
                 core.info(`No changed paths match filters for '${check}', marking as successful for commit ${commitSha}`);
 
-                // Create a successful status
                 await createCommitStatusWithRetry(octokit, {
                     owner: context.repo.owner,
                     repo: context.repo.repo,
@@ -202,45 +168,6 @@ async function run(): Promise<void> {
             core.setFailed('Unknown error occurred');
         }
     }
-}
-
-interface WorkflowConfig {
-    on?: {
-        pull_request?: {
-            paths?: string[];
-        };
-    };
-    jobs?: Record<string, { name?: string }>;
-}
-
-interface WorkflowInfo {
-    file: string;
-    jobs: string[];
-    config: WorkflowConfig;
-}
-
-function getWorkflowJobs(): Record<string, WorkflowInfo> {
-    const workflowJobs: Record<string, WorkflowInfo> = {};
-    const workflowDir = path.join(process.cwd(), '.github', 'workflows');
-
-    try {
-        const entries = fs.readdirSync(workflowDir);
-        const workflowFiles = entries.filter(entry => entry.endsWith('.yml') || entry.endsWith('.yaml'));
-        for (const workflowFile of workflowFiles) {
-            const content = fs.readFileSync(path.join(workflowDir, workflowFile), 'utf8');
-            const config = yaml.load(content) as WorkflowConfig;
-            const jobs = config.jobs ?? {};
-            workflowJobs[workflowFile] = {
-                file: workflowFile,
-                jobs: Object.keys(jobs).map(job => jobs[job]?.name ?? job),
-                config
-            };
-        }
-    } catch (error) {
-        core.warning(`Failed to read workflows: ${error}`);
-    }
-
-    return workflowJobs;
 }
 
 run();
