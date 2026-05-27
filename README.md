@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Path-Based Checks
-        uses: temap/pr-checks@v2
+        uses: gently-ai/pr-checks@v3
         with:
           rulesets: |
             main-branch-protection

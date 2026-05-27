@@ -1,11 +1,11 @@
 {
   "name": "pr-checks",
-  "version": "1.0.1",
+  "version": "3.0.0",
   "description": "A GitHub Action that manages required checks based on GitHub repository rulesets and file changes in pull requests",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/temap/pr-checks.git"
+    "url": "git+https://github.com/gently-ai/pr-checks.git"
   },
   "keywords": [
     "github",
@@ -15,26 +15,28 @@
     "path-filter",
     "pr-checks"
   ],
-  "author": "",
+  "author": "Gently AI",
+  "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@10.12.1",
   "dependencies": {
-    "@actions/core": "^1.10.1",
-    "@actions/github": "^6.0.0",
-    "js-yaml": "^4.1.0",
-    "minimatch": "^10.0.3"
+    "@actions/core": "3.0.1",
+    "@actions/github": "9.1.1",
+    "js-yaml": "4.1.0",
+    "minimatch": "10.2.5"
   },
   "scripts": {
     "build": "tsc && ncc build lib/index.js -o dist --source-map --license licenses.txt",
-    "watch": "tsc --watch",
+    "lint": "eslint src/",
+    "watch": "tsc && ncc build lib/index.js -o dist --source-map --license licenses.txt --watch",
     "package": "ncc build lib/index.js -o dist --source-map --license licenses.txt"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.11.6",
-    "@typescript-eslint/eslint-plugin": "^6.19.1",
-    "@typescript-eslint/parser": "^6.19.1",
-    "@vercel/ncc": "^0.38.1",
-    "eslint": "^8.56.0",
-    "typescript": "^5.3.3"
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "22.15.30",
+    "@vercel/ncc": "0.38.4",
+    "eslint": "9.39.4",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.33.0"
   }
 }

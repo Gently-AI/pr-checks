@@ -6,15 +6,6 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 import {minimatch} from 'minimatch';
 
-interface WorkflowConfig {
-    on?: {
-        pull_request?: {
-            paths?: string[];
-        };
-    };
-    jobs?: Record<PropertyKey, unknown>;
-}
-
 async function createCommitStatusWithRetry(
     octokit: ReturnType<typeof github.getOctokit>,
     params: {
@@ -105,7 +96,6 @@ async function run(): Promise<void> {
                 for (const rule of rulesetDetails.rules) {
                     if (rule.type === 'required_status_checks' && rule.parameters?.required_status_checks) {
                         for (const check of rule.parameters.required_status_checks) {
-                            console.log(check);
                             allChecks.add(check.context);
                             core.info(`  - Found required check: ${check.context}`);
                         }
@@ -214,10 +204,19 @@ async function run(): Promise<void> {
     }
 }
 
+interface WorkflowConfig {
+    on?: {
+        pull_request?: {
+            paths?: string[];
+        };
+    };
+    jobs?: Record<string, { name?: string }>;
+}
+
 interface WorkflowInfo {
     file: string;
     jobs: string[];
-    config: any;
+    config: WorkflowConfig;
 }
 
 function getWorkflowJobs(): Record<string, WorkflowInfo> {
@@ -229,12 +228,12 @@ function getWorkflowJobs(): Record<string, WorkflowInfo> {
         const workflowFiles = entries.filter(entry => entry.endsWith('.yml') || entry.endsWith('.yaml'));
         for (const workflowFile of workflowFiles) {
             const content = fs.readFileSync(path.join(workflowDir, workflowFile), 'utf8');
-            const config = yaml.load(content) as any;
-            const jobs = config.jobs || {};
+            const config = yaml.load(content) as WorkflowConfig;
+            const jobs = config.jobs ?? {};
             workflowJobs[workflowFile] = {
                 file: workflowFile,
-                jobs: Object.keys(jobs).map(job => jobs[job] ? jobs[job].name || job : job),
-                config: config
+                jobs: Object.keys(jobs).map(job => jobs[job]?.name ?? job),
+                config
             };
         }
     } catch (error) {
