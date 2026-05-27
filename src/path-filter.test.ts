@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {matchesPathFilters} from './path-filter.js';
+import {matchesPathFilters, shouldSkipWorkflow} from './path-filter.js';
 
 describe('matchesPathFilters', () => {
     describe('basic glob matching', () => {
@@ -84,6 +84,114 @@ describe('matchesPathFilters', () => {
                 ['src/styles.css'],
                 ['**/*.ts']
             )).toBe(false);
+        });
+    });
+});
+
+describe('shouldSkipWorkflow', () => {
+    describe('no filters', () => {
+        it('does not skip when no paths or paths-ignore are set', () => {
+            expect(shouldSkipWorkflow(['src/app.ts'])).toBe(false);
+        });
+
+        it('does not skip when both arrays are empty', () => {
+            expect(shouldSkipWorkflow(['src/app.ts'], [], [])).toBe(false);
+        });
+    });
+
+    describe('paths filter (existing behavior)', () => {
+        it('does not skip when changed files match paths filter', () => {
+            expect(shouldSkipWorkflow(
+                ['src/app.ts'],
+                ['src/**']
+            )).toBe(false);
+        });
+
+        it('skips when no changed files match paths filter', () => {
+            expect(shouldSkipWorkflow(
+                ['docs/readme.md'],
+                ['src/**']
+            )).toBe(true);
+        });
+
+        it('does not skip when any file matches among multiple', () => {
+            expect(shouldSkipWorkflow(
+                ['docs/readme.md', 'src/index.ts'],
+                ['src/**']
+            )).toBe(false);
+        });
+
+        it('handles negation patterns in paths', () => {
+            expect(shouldSkipWorkflow(
+                ['src/generated/types.ts'],
+                ['src/**', '!src/generated/**']
+            )).toBe(true);
+        });
+    });
+
+    describe('paths-ignore filter', () => {
+        it('skips when all changed files match paths-ignore patterns', () => {
+            expect(shouldSkipWorkflow(
+                ['docs/readme.md', 'docs/guide.md'],
+                undefined,
+                ['docs/**']
+            )).toBe(true);
+        });
+
+        it('does not skip when some files are outside paths-ignore', () => {
+            expect(shouldSkipWorkflow(
+                ['docs/readme.md', 'src/app.ts'],
+                undefined,
+                ['docs/**']
+            )).toBe(false);
+        });
+
+        it('does not skip when no files match paths-ignore', () => {
+            expect(shouldSkipWorkflow(
+                ['src/app.ts', 'lib/util.ts'],
+                undefined,
+                ['docs/**']
+            )).toBe(false);
+        });
+
+        it('handles multiple paths-ignore patterns', () => {
+            expect(shouldSkipWorkflow(
+                ['docs/readme.md', 'README.md'],
+                undefined,
+                ['docs/**', '*.md']
+            )).toBe(true);
+        });
+
+        it('does not skip when one file escapes multiple ignore patterns', () => {
+            expect(shouldSkipWorkflow(
+                ['docs/readme.md', 'src/app.ts'],
+                undefined,
+                ['docs/**', '*.md']
+            )).toBe(false);
+        });
+
+        it('handles exact file in paths-ignore', () => {
+            expect(shouldSkipWorkflow(
+                ['LICENSE'],
+                undefined,
+                ['LICENSE']
+            )).toBe(true);
+        });
+
+        it('does not skip for empty changed paths with paths-ignore', () => {
+            expect(shouldSkipWorkflow(
+                [],
+                undefined,
+                ['docs/**']
+            )).toBe(false);
+        });
+
+        it('handles deeply nested paths-ignore', () => {
+            expect(shouldSkipWorkflow(
+                ['packages/docs/api/v1/reference.md'],
+                undefined,
+                ['packages/docs/**']
+            )).toBe(true);
         });
     });
 });

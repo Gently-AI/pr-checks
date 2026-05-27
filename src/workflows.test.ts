@@ -114,6 +114,26 @@ jobs:
         expect(result).toEqual({});
     });
 
+    it('reads paths-ignore from workflow config', () => {
+        fs.writeFileSync(path.join(tmpDir, 'ci.yml'), `
+name: CI
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps: []
+`);
+        const result = getWorkflowJobs(tmpDir);
+        expect(result['ci.yml'].config.on?.pull_request?.['paths-ignore']).toEqual([
+            'docs/**',
+            '*.md'
+        ]);
+    });
+
     it('handles multiple workflows', () => {
         fs.writeFileSync(path.join(tmpDir, 'ci.yml'), `
 name: CI
