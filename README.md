@@ -2,13 +2,14 @@
 
 A GitHub Action that manages required checks based on GitHub repository rulesets and file changes in pull requests. This action extracts required status checks from specified rulesets and automatically marks checks as successful when:
 
-- Workflow path filters don't match any changed files
+- Workflow `paths` filters don't match any changed files
+- Workflow `paths-ignore` filters match all changed files
 - The job doesn't exist in any workflow in the repository
 
 ## Features
 
 - **Ruleset Integration**: Reads required status checks directly from GitHub repository rulesets
-- **Path Filtering**: Automatically detects path filters from workflow configurations
+- **Path Filtering**: Automatically detects `paths` and `paths-ignore` filters from workflow configurations
 - **Conditional Check Enforcement**: Marks checks as successful when no relevant files are changed
 - **Missing Job Handling**: Automatically marks jobs as successful if they don't exist in any workflow
 - **Workflow Discovery**: Automatically finds workflows containing specified job name
@@ -66,7 +67,8 @@ jobs:
 2. It extracts all required status checks from these rulesets
 3. For each required check:
    - If a workflow with that job name doesn't exist → marks as successful
-   - If the workflow exists but path filters don't match changed files → marks as successful
+   - If the workflow uses `paths` and no changed files match → marks as successful
+   - If the workflow uses `paths-ignore` and all changed files match → marks as successful
    - Otherwise → lets the check run normally
 
 ## Inputs
